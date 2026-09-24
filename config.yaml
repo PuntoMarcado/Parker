@@ -1,0 +1,37 @@
+# Parker v5 - Configuración Global
+
+# === CEREBRO (Groq) === Cambiar el modelo en https://console.groq.com/docs/models si falla
+groq:
+  modelo: "openai/gpt-oss-120b"   
+  max_tokens: 1024
+  temperature: 0.8
+
+# === MEMORIA (ChromaDB + embeddings) ===
+memoria:
+  db_path: "./parker.db"
+  coleccion: "recuerdos_parker"
+  modelo_embeddings: "paraphrase-multilingual-MiniLM-L12-v2"
+  top_k_recuerdos: 5
+  umbral_relevancia: 0.5
+
+# === VOZ (Piper TTS) ===
+voz:
+  modelo_piper: "./assets/voz/es_ES-davefx-medium.onnx"
+  modelo_config: "./assets/voz/es_ES-davefx-medium.onnx.json"  
+  velocidad: 0.9
+  volumen: 0.9
+
+# === ESCUCHA (Whisper STT) ===
+escucha:
+  modelo_whisper: "base"
+  idioma: "es"
+  duracion_maxima_grabacion: 20
+  umbral_silencio: 0.02
+  canales: 2                  
+  dispositivo_entrada: null   
+
+# === AUTONOMÍA ===
+autonomia:
+  intervalo_comprobacion_seg: 300    
+  umbral_silencio_seg: 2700          
+  umbral_sedentario_seg: 3600

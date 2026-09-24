@@ -1,0 +1,28 @@
+# Entorno virtual
+venv/
+.venv/
+env/
+
+# Archivos de claves secretas (¡MUY IMPORTANTE!)
+.env
+.env.*
+
+# Base de datos de memoria (ChromaDB local)
+parker.db/
+*.db
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Modelos pesados (.onnx) de Piper/Whisper (es mejor descargarlos por script que subirlos a GitHub)
+assets/voz/*.onnx
+assets/voz/*.onnx.json
+
+# IDEs y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
