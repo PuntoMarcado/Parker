@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-label="Esquema de connexions entre la pantalla GC9A01 i l'Orange Pi 5 Pro">
+  <rect width="1200" height="780" fill="#fbfaf5"/>
+  <text x="600" y="42" font-family="Arial, sans-serif" font-size="26" font-weight="700" text-anchor="middle" fill="#17202a">Parker · esquema de connexions de la pantalla</text>
+  <text x="600" y="70" font-family="Arial, sans-serif" font-size="15" text-anchor="middle" fill="#4a5563">GC9A01 1,28" · 240 × 240 · SPI0 · alimentació 3,3 V</text>
+
+  <!-- Display block -->
+  <rect x="60" y="120" width="360" height="500" rx="18" fill="#ffffff" stroke="#17202a" stroke-width="2"/>
+  <text x="240" y="154" font-family="Arial, sans-serif" font-size="19" font-weight="700" text-anchor="middle" fill="#17202a">Mòdul GC9A01</text>
+  <text x="240" y="176" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#5b6673">connector de 8 pins · cara frontal</text>
+  <circle cx="240" cy="222" r="28" fill="#dcebf7" stroke="#3c7fb1" stroke-width="2"/>
+  <circle cx="230" cy="217" r="3" fill="#17202a"/>
+  <circle cx="250" cy="217" r="3" fill="#17202a"/>
+  <path d="M229 231 Q240 238 251 231" fill="none" stroke="#17202a" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Display pin labels -->
+  <g font-family="Arial, sans-serif" font-size="15" text-anchor="end" fill="#17202a">
+    <text x="330" y="284">VCC</text>
+    <text x="330" y="329">GND</text>
+    <text x="330" y="374">DIN</text>
+    <text x="330" y="419">CLK</text>
+    <text x="330" y="464">CS</text>
+    <text x="330" y="509">DC</text>
+    <text x="330" y="554">RST</text>
+    <text x="330" y="599">BL</text>
+  </g>
+  <g fill="#ffffff" stroke="#17202a" stroke-width="2">
+    <circle cx="390" cy="279" r="7"/><circle cx="390" cy="324" r="7"/>
+    <circle cx="390" cy="369" r="7"/><circle cx="390" cy="414" r="7"/>
+    <circle cx="390" cy="459" r="7"/><circle cx="390" cy="504" r="7"/>
+    <circle cx="390" cy="549" r="7"/><circle cx="390" cy="594" r="7"/>
+  </g>
+
+  <!-- Board block -->
+  <rect x="750" y="120" width="390" height="500" rx="18" fill="#ffffff" stroke="#17202a" stroke-width="2"/>
+  <text x="945" y="154" font-family="Arial, sans-serif" font-size="19" font-weight="700" text-anchor="middle" fill="#17202a">Orange Pi 5 Pro</text>
+  <text x="945" y="176" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#5b6673">header 2 × 20 · costat dels pins</text>
+  <text x="945" y="222" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#8a4b0f">ordre lògic, no posició física</text>
+
+  <!-- Board terminals and labels -->
+  <g fill="#ffffff" stroke="#17202a" stroke-width="2">
+    <circle cx="750" cy="279" r="7"/><circle cx="750" cy="324" r="7"/>
+    <circle cx="750" cy="369" r="7"/><circle cx="750" cy="414" r="7"/>
+    <circle cx="750" cy="459" r="7"/><circle cx="750" cy="504" r="7"/>
+    <circle cx="750" cy="549" r="7"/><circle cx="750" cy="594" r="7"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="14" fill="#17202a">
+    <text x="770" y="284">pin 1 · 3V3</text>
+    <text x="770" y="329">pin 6 · GND</text>
+    <text x="770" y="374">pin 19 · SPI0_MOSI_M2</text>
+    <text x="770" y="419">pin 23 · SPI0_CLK_M2</text>
+    <text x="770" y="464">pin 24 · SPI0_CS0_M2</text>
+    <text x="770" y="509">pin 22 · GPIO1_B0 · DC</text>
+    <text x="770" y="554">pin 13 · GPIO4_B3 · RST</text>
+    <text x="770" y="599">pin 17 · 3V3 · BL</text>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="11" fill="#5b6673">
+    <text x="770" y="300">alimentació del mòdul</text>
+    <text x="770" y="345">referència comuna</text>
+    <text x="770" y="390">dades SPI</text>
+    <text x="770" y="435">rellotge SPI</text>
+    <text x="770" y="480">selecció del controlador</text>
+    <text x="770" y="525">comanda / dades</text>
+    <text x="770" y="570">reset del controlador</text>
+    <text x="770" y="615">retroil·luminació</text>
+  </g>
+
+  <!-- Wires -->
+  <g fill="none" stroke-width="4" stroke-linecap="round">
+    <line x1="397" y1="279" x2="743" y2="279" stroke="#c0392b"/>
+    <line x1="397" y1="324" x2="743" y2="324" stroke="#17202a"/>
+    <line x1="397" y1="369" x2="743" y2="369" stroke="#d68910"/>
+    <line x1="397" y1="414" x2="743" y2="414" stroke="#2471a3"/>
+    <line x1="397" y1="459" x2="743" y2="459" stroke="#1e8449"/>
+    <line x1="397" y1="504" x2="743" y2="504" stroke="#7d3c98"/>
+    <line x1="397" y1="549" x2="743" y2="549" stroke="#873600"/>
+    <line x1="397" y1="594" x2="743" y2="594" stroke="#b7950b"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#17202a">
+    <rect x="527" y="266" width="86" height="20" rx="4" fill="#fbfaf5"/>
+    <text x="570" y="280">3,3 V</text>
+    <rect x="527" y="311" width="86" height="20" rx="4" fill="#fbfaf5"/>
+    <text x="570" y="325">GND</text>
+    <rect x="527" y="356" width="86" height="20" rx="4" fill="#fbfaf5"/>
+    <text x="570" y="370">MOSI</text>
+    <rect x="527" y="401" width="86" height="20" rx="4" fill="#fbfaf5"/>
+    <text x="570" y="415">SCLK</text>
+    <rect x="527" y="446" width="86" height="20" rx="4" fill="#fbfaf5"/>
+    <text x="570" y="460">CS0</text>
+    <rect x="527" y="491" width="86" height="20" rx="4" fill="#fbfaf5"/>
+    <text x="570" y="505">DC</text>
+    <rect x="527" y="536" width="86" height="20" rx="4" fill="#fbfaf5"/>
+    <text x="570" y="550">RST</text>
+    <rect x="527" y="581" width="86" height="20" rx="4" fill="#fbfaf5"/>
+    <text x="570" y="595">BL</text>
+  </g>
+
+  <!-- Notes -->
+  <text x="60" y="650" font-family="Arial, sans-serif" font-size="14" fill="#4a5563">Els colors identifiquen cada línia; no són una obligació del cable físic.</text>
+  <rect x="60" y="670" width="1080" height="82" rx="12" fill="#fff4e5" stroke="#b9770e" stroke-width="2"/>
+  <text x="84" y="699" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#8a4b0f">Comprovacions crítiques</text>
+  <text x="84" y="723" font-family="Arial, sans-serif" font-size="14" fill="#5b3a11">VCC i BL a 3,3 V, mai a 5 V · GND comuna · DIN al pin 19, mai al 21 (MISO) · DC al 22 · RST al 13</text>
+  <text x="84" y="742" font-family="Arial, sans-serif" font-size="12" fill="#5b3a11">Overlay necessari: spi0-m2-cs0-spidev. Els números de pin són del header de 40 pins de l'Orange Pi 5 Pro.</text>
+</svg>

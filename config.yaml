@@ -1,37 +1,449 @@
-# Parker v5 - Configuración Global
+# Parker v6 - Configuración Global
+#
+# CEREBRO DOBLE (25/10/2026)
+#   - Nube: piensa y redacta (rápido, español natural). Es la que habla.
+#   - Local: escucha, transcribe, habla, recuerda y guarda. Y responde si
+#     internet falla, sin tocar nada.
+# Si algún día se quiere 100% local otra vez: `online.activo: false`.
 
-# === CEREBRO (Groq) === Cambiar el modelo en https://console.groq.com/docs/models si falla
-groq:
-  modelo: "openai/gpt-oss-120b"   
-  max_tokens: 1024
-  temperature: 0.8
+# === CEREBRO ONLINE (primario) ===
+# Medido en el PC el 25/10 con el prompt real de Parker (3 turnos):
+#   openai/gpt-oss-20b   0,56 s al primer token | 742 tok/s
+#   openai/gpt-oss-120b  0,58 s                | 415 tok/s
+#   qwen/qwen3.8-27b     0,71 s                | 240 tok/s (y un turno en blanco)
+# En la placa el mismo turno tardaba 8,75 s de mediana (mín. 3,99 / máx. 12,40).
+online:
+  activo: true
+  base_url: "https://api.groq.com/openai/v1"
+  # 01/11: qwen3.8-27b, medido en el PC con el prompt real: 0,51 s de
+  # mediana y 0/12 respuestas vacías. El 20b era más rápido (0,50 s) pero
+  # se inventaba recuerdos («la receta de pasta que te mencioné»).
+  modelo: "qwen/qwen3.8-27b"
+  # Los proveedores retiran modelos cada pocos meses (Groq ya lo hizo varias
+  # veces). Al arrancar, Parker pregunta la lista real (`/models`): si el suyo
+  # ya no está, pasa al primero de esta lista que siga disponible y lo avisa
+  # en el log. Así no se queda sin cerebro online un día cualquiera.
+  modelos_alternativos:
+    - "openai/gpt-oss-120b"
+    - "openai/gpt-oss-20b"
+  api_key_env: "GROQ_API_KEY"   # la clave vive en .env (nunca en este fichero)
+  max_tokens: 160               # 2-3 frases cortas de voz
+  temperature: 0.6
+  reasoning_effort: "low"       # gpt-oss razona aparte: bajo = primera palabra antes
+  timeout_conexion: 3.0         # si no conecta en 3 s, responde el cerebro local
+  timeout_lectura: 10.0
+  reintento_seg: 60             # tras un fallo no se reintenta antes: cero espera por turno
+  # Cerebro por voz (27/10): «ponte en local», «vuelve a la nube»,
+  # «¿qué cerebro usas?». `modo_inicial` es solo el punto de partida: lo que se
+  # elija por voz se guarda en `ruta_estado` y sobrevive a los reinicios.
+  modo_inicial: "auto"         # auto = nube + respaldo | nube | local
+  ruta_estado: "./parker.cerebro.json"
+  avisar_por_voz: true         # dice en voz alta cuando la nube falla o vuelve
+
+# === MODO COMPLETO (cerebro + oído + voz) ===
+# Pedido el 01/11/2026: «modo local completo» tiene que cambiar las tres
+# piezas, no solo el cerebro. Se guarda aquí para que un reinicio no devuelva
+# la voz a internet sin avisar. Sin este fichero se respeta config.yaml y
+# `parker.cerebro.json` (comportamiento anterior).
+modo:
+  ruta_estado: "./parker.modo.json"
+
+# === CEREBRO LOCAL (Ollama) === respaldo sin internet
+llama:
+  host: "http://localhost:11434"
+  # Decisión del dueño (24/10/2026): «útil y que tarde» gana a «rápido y tonto».
+  # qwen2.5:3b procesa bien contextos y recuerdos de Chroma; con num_ctx 2048
+  # e identidad recortada su primer token bajó a 2,1-2,3 s (medido 24/10).
+  # RKLLM oficial usa la NPU, pero su benchmark publicado no equivale a esta
+  # medición ni demuestra mejor TTFT, calidad en español o API; probar aislado.
+  # 4 hilos fueron más rápidos que 3. No reducir por una lectura puntual a 60°C.
+  # Identificar tipo de sensor y trips reales del kernel antes de valorar calor.
+  # 01/11: probado en la placa con el prompt real. El 3B entendía bien, pero
+  # el turno se iba a 12 s; este 2B hace 4/4 contextos y turno p50 5,5 s
+  # (TTFB 3,0 s, 13,4 tok/s). El 1,5B era más rápido pero incoherente.
+  modelo: "qwen3.5-local:2b"
+  # El corte REAL de longitud es `max_oraciones` (frase entera, nunca a media
+  # palabra). max_tokens es solo la red de seguridad: si fuera 64, el modelo
+  # podía quedar cortado a media 3ª frase y sonaba truncado (lección Rocky).
+  max_tokens: 100        # red de seguridad; el corte real es por oraciones
+  max_oraciones: 2       # 01/11: dos frases bastan para voz y recortan ~1/3
+                         # la generación local (con 3, el turno local pasaba de
+                         # 30 s con la CPU compartida).
+  temperature: 0.45     # restaurado (0,35 volvía rígidas las respuestas); test <= 0.5
+  repeat_penalty: 1.1   # 1,15 distorsionaba palabras; plan §3.1 (piso del test: 1,1)
+  repeat_last_n: 128
+  num_ctx: 2048          # MEDIDO 24/10: el prompt real llega a ~1067 tok y con
+                         # 1024 Ollama RECORTABA identidad/historial («se confunde»)
+                         # y reevaluaba todo cada turno (TTFB 5-7 s). Con 2048 no
+                         # se recorta y el caché de prefijo puede actuar (test = 2048).
+  num_thread: 4          # mejor latencia medida; cambiar solo tras prueba sostenida
+  # 01/11: 1 h, no 24 h. El local es respaldo; tenerlo residente un día
+  # entero llenaba la RAM (3 modelos, 5,3 GB) y forzaba swap.
+  keep_alive: "1h"
+  sin_pensar: true       # Qwen3.5 razona por defecto; en voz no se quiere
+  # Carga el modelo local al arrancar (en segundo plano y con retraso: primero
+  # se abre el micrófono, para que Parker escuche desde el primer segundo).
+  # Con la nube funcionando esto es solo preparar el respaldo: si se quiere
+  # ahorrar CPU/RAM, ponerlo en false.
+  # 01/11: false. Con la nube de primaria, precargar el 2B al arrancar
+  # consumía 1,8 GB y 55 s de CPU sin usarse. Se carga solo si la nube falla.
+  precalentar: false
+  # 60 s: el respaldo se carga cuando ya has podido hablar sin que la carga del
+  # modelo (55 s de CPU) se cruce con el primer turno (medido 25/10: un turno
+  # durante la carga tardó 2,85 s en vez de 0,8 s).
+  precalentar_retraso_seg: 15
+  # 8 = cuatro intercambios. Con la nube el prompt extra cuesta céntimos y el
+  # contexto largo es lo que permite seguir el hilo («¿y eso?», «el del
+  # trabajo»).
+  # Con el cerebro local de respaldo cada turno reevalúa más tokens: si algún
+  # día se vuelve a 100 % local, bajar a 4.
+  # 01/11: en 100 % local cada mensaje extra se paga en el prefill de cada
+  # turno. 4 = dos intercambios; los recuerdos largos los aporta Chroma.
+  historial_mensajes: 4
+  # 24/10: medido en la placa con el prompt real: precalentar el prefijo justo
+  # cuando empieza a hablar baja el primer token de 1,74 s a 0,62 s (y en un
+  # turno con historial, de 4-12 s a <1 s). Se lanza al DETECTAR voz, no al
+  # transcribir, así no compite con Whisper. Si vuelve a dar TTFB alto, mirar
+  # el log: [Cerebro] No se pudo precalentar el turno.
+  # 01/11: con el cerebro local el prefijo tarda 20 s en una placa ocupada y
+  # competía con el turno real (timeouts de 30 s en el log). El 2B ya responde
+  # en 3 s sin ese precalentado; se apaga para no ahogar la CPU.
+  precalentar_turno: false
+
+temperatura:
+  aviso_c: 70.0  # Aviso preventivo configurable, no límite de seguridad ni throttling
 
 # === MEMORIA (ChromaDB + embeddings) ===
 memoria:
   db_path: "./parker.db"
   coleccion: "recuerdos_parker"
   modelo_embeddings: "paraphrase-multilingual-MiniLM-L12-v2"
-  top_k_recuerdos: 5
-  umbral_relevancia: 0.5
+  # Recuperar 3 experiencias del usuario para relacionar temas recurrentes.
+  # Se inyectan solo recuerdos relevantes, reducidos a hechos del usuario.
+  top_k_recuerdos: 3
+  # 03/11/2026: con la búsqueda HÍBRIDA (semántica + léxica FTS5 fundidas)
+  # el umbral de coseno ya no filtra nada: ordena RRF y no solapaba señal de
+  # ruido (medido: senal 0,74 vs sorol 0,72 con 200 recuerdos). Si algún día
+  # se vuelve a solo semántica (hibrida: false), vuelve a actuar el umbral.
+  hibrida: true
+  umbral_relevancia: 0.58      # solo se usa si hibrida: false
+  max_caracteres_recuerdo: 140
+  solo_recuerdos_usuario: true
+  max_char_turno_reciente: 100  # Un recuerdo largo se recorta: son tokens que
+                                # se pagan en cada respuesta
+  # Índice léxico (FTS5) al lado de Chroma: un SQLite derivado, NO el interno
+  # de Chroma. Se rellena solo si no coincide con la colección.
+  ruta_fts: "./parker_fts.sqlite"
+  # --- HECHOS EXACTOS («el hecho, no la transcripción») ------------------
+  # Datos dichos por la persona (dentista, alergias, mascota, edad...) van
+  # a una tabla de slots que viaja SIEMPRE en el system prompt (estable, e
+  # cachea con el prefijo). Arregla el 4/8 de preguntas cortas de hechos
+  # medido en la evaluación: son tan pocos que no necesitan recuperación.
+  hechos:
+    activo: true
+    ruta: "./parker.hechos.db"
 
-# === VOZ (Piper TTS) ===
+# === PROSODIA (señal débil de ánimo, 03/11/2026) ===
+# Cada turno guarda RMS (dB), F0 media y densidad de voz de la frase de la
+# persona. `tendencia()` compara los últimos días con SU baseline (14 días).
+# Solo se usa para legend una pregunta suave de bienestar cuando la voz
+# suena más baja de lo habitual. Nunca es diagnóstico y no cambia respuestas.
+prosodia:
+  activo: true
+  ruta: "./parker.prosodia.db"
+  dias_recientes: 3
+  dias_base: 14
+
+# === VOZ (Edge TTS + Piper local de respaldo) ===
+# Edge TTS usa la voz neuronal de Microsoft (es-ES-XimenaNeural, la misma
+# familia que las voces de Windows) y necesita internet. Piper se carga
+# siempre y entra solo si Edge falla: sin red Parker no se queda mudo.
+# Para volver a la voz local de siempre: `motor: piper`.
 voz:
+  motor: "edge"                 # edge = nube (natural) | piper = 100% local
+  edge_voz: "es-ES-XimenaNeural"
+  edge_timeout_seg: 8.0         # si Microsoft no contesta, Piper entra solo
+  edge_reintento_seg: 60.0      # tras fallar, no se reintenta en cada frase
+  edge_ffmpeg: "ffmpeg"         # decodifica el MP3 de Edge a PCM
   modelo_piper: "./assets/voz/es_ES-davefx-medium.onnx"
   modelo_config: "./assets/voz/es_ES-davefx-medium.onnx.json"  
-  velocidad: 0.9
-  volumen: 0.9
+  # velocidad < 1 = habla más despacio (calmado). Se aplica con el
+  # length_scale de Piper: NO cambia el tono de la voz.
+  velocidad: 0.85
+  # volumen es una ganancia 0-1 que Piper aplica tras normalizar. 0.55 suena
+  # a conversación; por encima de ~0.7 empieza a sonar a grito (medido).
+  volumen: 0.55
+
+# === ACCIONES DIRECTAS (sin LLM) ===
+# «baja el volumen», «silencia», «silba»: se ejecutan al instante y se
+# confirman con una frase corta. `volumen` es la ganancia de la voz (0-1):
+# el paso se aplica a ese valor, no a un porcentaje del mezclador de ALSA.
+acciones:
+  paso_volumen: 0.15       # cada «sube»/«baja» mueve 15 puntos (55 -> 40 -> ...)
+  volumen_min: 0.01        # 1 %: el dueño puede pedir casi silencio; se oye poco
+  volumen_max: 1.00        # 100 %: si lo pide, se le da; a 0.55 suena conversación
+  ruta_volumen: "./parker.volumen.json"  # recuerda el volumen entre reinicios
+
+# === AGENDA (alarmas, temporizadores y citas) ===
+# Órdenes sin LLM, como el volumen: se apuntan en local y el aviso lo dispara
+# un hilo propio de Parker (campana de `modulos/sonidos.despertador` por el
+# altavoz + frase hablada). Frases que entiende:
+#   «pon una alarma a las 7:30»  «despiértame a las siete y media»
+#   «avísame en 10 minutos la lavadora»  «pon un temporizador de media hora»
+#   «apunta que el viernes a las 5 tengo al dentista»  «¿qué tengo mañana?»
+#   «¿qué alarmas tengo?»  «borra la cita del dentista»
+# Guía con todas las formas y sus reglas: docs/agenda.md
+agenda:
+  ruta_agenda: "./parker.agenda.json"  # vive en la placa; el PC no se llena
+  hora_citas: "09:00"            # una cita sin hora avisa a esta hora
+  intervalo_comprobacion_seg: 1.0  # cada cuánto mira si algún aviso venció
+  # Un aviso vencido hace más de estas horas se descarta sin sonar (visto el
+  # 26/10: al reiniciar Parker soltó un temporizador de la sesión anterior).
+  # Dentro del plazo sí avisa: recupera lo que se perdió mientras estaba apagado.
+  caducidad_horas: 12
+  # La campana no baja de aquí aunque la voz esté al 10 %: un aviso tiene que
+  # oírse. La frase hablada sigue el volumen normal (y el silencio).
+  volumen_minimo_aviso: 0.35
+
+# === RUTINAS DEL DÍA (dormir, parte, callarse, apagarse) ===
+# Idea 1 (26/10/2026): el día de Parker y una forma limpia de apagarlo todo.
+#   «buenas noches» / «a dormir»      -> se calla y deja de tomar la iniciativa
+#   «buenos días» / «despiértate»     -> vuelve y suelta el parte del día
+#   «cállate diez minutos»            -> silencio temporal (vuelve solo)
+#   «Parker, apágate»                 -> despedida, guardado y apagado de la placa
+# Guía con todas las formas: docs/dia.md
+rutinas:
+  hora_parte: "08:30"          # a esta hora dice el parte (una vez al día)
+  parte_si_vacio: false        # true = también dice «no tienes nada apuntado»
+  despedida_seg: 2.4           # lo que dura la animación de despedida en pantalla
+  apagado_seco: false          # true = solo lo apunta en el log (para probar)
+  # Comando para apagar. En la placa funciona `systemctl poweroff` (logind); si
+  # algún día pidiera contraseña, se cambia aquí (por ejemplo con un sudoers).
+  orden_apagado: "systemctl poweroff"
+
+# === APUNTES (notas, listas y contadores) ===
+# Lo que no tiene hora: «apunta que compre leche», «¿qué tenía apuntado?»,
+# «apunta un litro de agua», «¿cuánta agua llevo hoy?». Es dato puro: Parker
+# puede crear y borrar sus propias listas y contadores por voz, sin tocar código.
+apuntes:
+  ruta_apuntes: "./parker.apuntes.json"
+  dias_conservar: 60          # los contadores olvidan días de hace más de esto
+
+# === TIEMPO (Open-Meteo, sin clave) ===
+# La ciudad es una VARIABLE: se cambia por voz («estamos en Madrid») y manda
+# lo que se diga sobre lo que ponga aquí. Se guarda en `parker.tiempo.json`.
+tiempo:
+  ciudad: "Barcelona"
+  ruta_ciudad: "./parker.tiempo.json"
+  cache_seg: 600              # 10 min de caché: el tiempo no cambia cada minuto
+
+# === MÚSICA (Deezer, sin clave) ===
+# «pon algo de Queen», «pon música», «para la música», «sube la música».
+# Se reproduce el adelanto de 30 s que da el servicio; para canciones enteras
+# haría falta una cuenta de pago (Spotify/Apple) y eso es otra decisión.
+musica:
+  # 01/11: desactivada mientras se estabiliza el audio (el dueño la pide
+  # fuera hasta arreglar el retardo y el micrófono). Para volver a probarla:
+  # activo: true, reiniciar y decir «pon algo de Queen».
+  activo: false
+  volumen: 0.7                # ganancia de la música (aparte del volumen de la voz)
+  max_segundos: 40            # tope por tema (el adelanto dura 30 s)
+  temas_seguidos: 3           # encadena hasta 3 temas de la misma búsqueda
+  # Mientras suena la música, el micrófono la oye: para poder hablarle por
+  # encima, se baja un momento («duck») y se mira si el nivel cae con ella (era
+  # la canción) o sigue alto (eres tú). Medido en simulación el 27/10.
+  # Medido en la placa el 27/10 con una canción real: deja 0,0108 de mediana y
+  # picos de 0,037 en el micrófono; una voz normal ronda 0,05.
+  duck_factor: 0.15           # cuánto se baja (0.15 = 15 % del volumen pedido)
+  factor_disparo: 1.5         # cuánto tiene que sobresalir del nivel de la canción
+                              # para probar si es una persona. Con 1.5 se oyen
+                              # todas las frases (10/10) y la canción sola provoca
+                              # alguna bajada breve (sin abrir turno). Si la música
+                              # se baja sola demasiado, súbelo; si no te oye por
+                              # encima, bájalo.
 
 # === ESCUCHA (Whisper STT) ===
 escucha:
-  modelo_whisper: "base"
+  # --- Motor del STT (25/10) ---
+  # La transcripción es la ENTRADA del cerebro: si se equivoca, Parker
+  # contesta a otra cosa («no coge el contexto»). Medido en la placa con la
+  # misma frase de 6,1 s grabada por el micro USB:
+  #   local faster-whisper base  -> 4,31 s y «en AL médico» (un error)
+  #   nube whisper-large-v3-turbo -> 0,68 s y texto exacto
+  # «auto» = nube si hay red y clave; si falla, local durante 60 s.
+  # PRIVACIDAD: con "auto" o "nube" el audio del turno sale de casa (a Groq).
+  # Con "local" no sale nada, pero se pierde precisión y ~3,5 s por turno.
+  motor: "auto"                # "auto" | "nube" | "local"
+  modelo_nube: "whisper-large-v3-turbo"
+  url_nube: "https://api.groq.com/openai/v1"
+  api_key_env: "GROQ_API_KEY"
+  timeout_nube_seg: 8.0
+  reintento_stt_seg: 60
+
+  backend: "auto"             # "auto" | "faster-whisper" | "openai-whisper"
+  modelo_whisper: "base"      # modelo del backend openai-whisper
+  # 01/11: `base` es rápido (2,25 s con 4,4 s de audio) pero oyó «cambia la
+  # voz a internet» como «cambia la voz al local» y ejecutó la orden
+  # contraria. `small` tarda 4,45-4,85 s y la transcribe exacta, pero en la
+  # placa se quedó 45 min transcribiendo con 14 hilos nativos al 40-70 % y
+  # dejó sin CPU a la cara y al cerebro. Se vuelve a `base` (con hotwords) y
+  # se limita a 4 hilos; la nube sigue disponible en modo normal.
+  modelo_faster: "base"
+  # CTranslate2 usaba los 8 núcleos y ahogaba el resto de Parker.
+  hilos_cpu: 4
+  beam_size: 1                # 1 = más rápido (greedy); 5 = más preciso
+  vad_filter: True            # recorta silencios antes de transcribir
   idioma: "es"
   duracion_maxima_grabacion: 20
-  umbral_silencio: 0.02
-  canales: 2                  
-  dispositivo_entrada: null   
+  silencio_corte_seg: 0.6     # silencio que cierra el turno (antes 1,3 s fijo)
+  # 01/11: además del nombre, las palabras de las órdenes nuevas. Sin este
+  # sesgo, el `base` local oyó «cambia la voz a internet» como «rincalmente»
+  # y la orden no se ejecutó.
+  # 02/11: «modo demo» y «animaciones» para que el oído no se coma la orden
+  # nueva; el parser de acciones la reconoce sin pasar por el LLM.
+  hotwords: "Parker, modo local completo, modo normal, voz local, voz internet, oído local, cerebro local, modo demo, animaciones, para la demo"
+  # Sesgo alternativo/complementario (plan §2.1, estilo wyoming): a veces
+  # initial_prompt acierta donde hotwords no. Probar en la placa; null = off.
+  # 01/11: NO poner órdenes aquí. Whisper devolvió el prompt entero y
+  # Parker ejecutó «cambia el cerebro al local» sin que nadie lo dijera.
+  # 01/11 20:39: tampoco preguntas entre «»; Whisper devolvía
+  # «¿qué día es hoy?». en cada turno y el filtro lo tomaba por eco.
+  # 01/11 20:55: ni siquiera una frase neutra; con audio poco claro la nube
+  # devolvía «Parker se escribe Parker.» y se procesaba como si fuera el
+  # usuario. Sin prompt no hay texto que alucinar. El nombre lo cubre hotwords.
+  initial_prompt: null
+  # Parámetros del VAD Silero de faster-whisper (plan §2.1). null = defaults
+  # de la librería. Para la sesión de medición: {threshold: 0.4, speech_pad_ms: 500}.
+  vad_parameters: null
+  # Volcado del audio transcrito a WAV+TXT para el corpus STT (plan §2.4).
+  # null = off; el día del banco se pone "./corpus_stt" y cada turno graba solo.
+  # 02/11: desactivado tras la limpieza; el corpus no hace falta para
+  # funcionar y no conviene acumular audio de conversaciones en la placa.
+  volcar_audio_dir: null
+  # Umbral de voz ADAPTATIVO (medido en la placa: silencio ~0,001 / voz ~0,05).
+  # `umbral_silencio` es el mínimo absoluto y `factor_ruido` lo sube cuando hay
+  # ruido de fondo (tele, ventilador, gente hablando lejos).
+  # 01/11: estaba en 0,02 y hablando de lejos había que gritar. El micro USB
+  # ya va a ganancia máxima (31 dB, lo sube arrancar.sh); con 0,007 y un
+  # factor 3,0 una voz lejana entra sin abrir la puerta al ruido de fondo.
+  umbral_silencio: 0.007
+  factor_ruido: 3.0
+  # 01/11: 7 chunks/0,8 s dejaban fuera «Parker, ¿qué hora es?» (1,2 s, 5
+  # chunks). Se vuelve a 5/0,6; el enfriamiento de 2 s tras hablar y el mínimo
+  # de RMS filtran la cola del altavoz y el ruido de sala.
+  duracion_minima_seg: 0.6
+  chunks_voz_minimos: 5
+  # --- Front-end de audio (patrones de Rocky/desk-robot, MIT) ---
+  # Audio guardado ANTES de detectar voz: la 1ª sílaba (donde vive «Parker»)
+  # ya no se recorta.
+  pre_roll_seg: 0.3
+  # Con música sonando el pre-roll es más largo: cuando se confirma que hay una
+  # persona, su frase ya empezó mientras sonaba la canción (27/10).
+  pre_roll_musica_seg: 1.1
+  # Histéresis: una vez oyendo voz, el umbral baja a este factor, para que las
+  # sílabas suaves de cierre no cuenten como silencio y no corte antes de tiempo.
+  # 01/11: 0,55 en vez de 0,70; una voz lejana tiene sílabas mucho más flojas.
+  factor_umbral_voz: 0.55
+  # High-pass one-pole (~120 Hz): quita DC y ronquido de tele/ventilador del
+  # RMS. 0 = off. Si la voz lejana no pasa el umbral, BAJAR umbral_silencio.
+  filtro_paso_alto_hz: 120
+  # --- VAD neuronal + AGC (01/11/2026) -------------------------------------
+  # El VAD por volumen obligaba a casi gritar: el ruido de fondo también sube
+  # el umbral. Silero v6 ya viene dentro de faster-whisper y se aplica sobre
+  # una copia con ganancia automática, así que una voz lejana entra sin abrir
+  # el turno con la tele. `rms` vuelve al comportamiento antiguo.
+  # Medido en la placa con una frase al 5 % de nivel: 0,09 de probabilidad sin
+  # AGC y 0,34-0,58 con AGC; el ruido de sala se queda por debajo de 0,10.
+  vad_motor: "silero"
+  vad_umbral_inicio: 0.18
+  vad_umbral_mantener: 0.10
+  # 02/11: el log de la placa mostraba turnos falsos con rms 0,0015-0,0026
+  # (AGC x6) que Whisper convertía en «Gracias.» o «¡Suscríbete al canal!».
+  # La voz real de esos mismos turnos empieza en 0,004; 0,0035 corta el ruido
+  # y conserva la voz normal. Si algún día se pierde una voz muy baja, bajar
+  # a 0,003 antes que tocar el VAD.
+  vad_rms_minimo: 0.0035
+  agc_objetivo: 0.12
+  agc_alfa: 0.2
+  agc_max_ganancia: 6.0
+  canales: 1
+  # Micrófono por NOMBRE (trozo, sin distinguir mayúsculas), no por índice: tras
+  # reiniciar la placa los índices de ALSA cambian y el 25/10 Parker se quedó
+  # escuchando el códec interno (silencio absoluto) mientras el micro USB seguía
+  # ahí. "usb" elige el micro USB; si no aparece, usa el dispositivo por defecto.
+  dispositivo_entrada: "usb"
+  # El USB tarda en enumerar al encender (medido 30/10: apareció a los ~29 s,
+  # con la cara ya puesta). Se espera hasta este máximo SOLO al arrancar; si
+  # no aparece, se usa el dispositivo por defecto y se avisa en el log.
+  esperar_micro_seg: 25
+  # Chime de «micrófono listo»: dos notas cortas y suaves, distinto de la
+  # campana de la agenda. 0 lo silencia (el aviso del log se queda).
+  aviso_micro_volumen: 0.35
+  # Vigilante del micrófono (idea 8): si la entrada se queda en silencio absoluto
+  # (ruido de fondo < 0,0005) durante estos segundos, Parker cierra el flujo,
+  # vuelve a buscar el micro por nombre y lo abre otra vez. Cubre el caso que ya
+  # pasó: USB a medio conectar o índice de ALSA cambiado tras reiniciar.
+  rearmar_mic_seg: 90
+
+# === PANTALLA SPI (GC9A01 240x240, Waveshare 1.28") ===
+# Los pines se declaran por NOMBRE de GPIO y el driver autodetecta el gpiochip
+# (el número de chip puede desplazarse; el nombre del banco no). Recablear no
+# requiere tocar código. Cableado de referencia: docs/placa.md §7.
+pantalla:
+  # 24 MHz de SPI = 38 ms por fotograma completo (115 KB): el techo real es
+  # ~26 fps. A 25 fps no quedaba margen y la cola crecía (cara congelada /
+  # ojos «estirándose» por fotogramas a medias, visto 25/10). A 15 fps sobra.
+  fps: 15
+  spi_bus: 0                 # → /dev/spidev0.0 (SPI0 en el header)
+  spi_dispositivo: 0
+  velocidad_hz: 24000000     # fotogramas (bloques grandes), bajar a 1000000 si el panel no responde
+  velocidad_init_hz: 1000000 # la secuencia de init a 1 MHz: son escrituras de 1-2 bytes
+  madctl: 0x98               # MADCTL oficial del módulo; 0x48 es la variante común
+  inversion: true            # INVON (0x21): sin él la imagen sale pálida y con tinte
+  dc_gpio: "GPIO1_B0"        # pin físico 22 del header
+  rst_gpio: "GPIO4_B3"       # pin físico 13 del header
+  # Solo si hiciera falta forzar (ver `python modulos/display_spidev.py`):
+  # dc_chip: "/dev/gpiochip1"
+  # dc_line: 8
+  # rst_chip: "/dev/gpiochip4"
+  # rst_line: 11# === PERSONALIDAD ===
+# Quién es Parker (sus gustos, sueños, manías y miedos) se edita en
+# `modulos/personalidad.py`: esa es su ficha de personaje. Aquí solo se ajusta
+# cómo de intensa es esa personalidad y si su ánimo se recuerda entre reinicios.
+personalidad:
+  nombre: "Parker"
+  matiz: "amigable, curioso y un poco torpe"   # su carácter de hoy
+  nivel_carino: 0.8           # 0-1: cuánta ternura explícita en el lenguaje
+  nivel_humor: 0.6            # 0-1: cuánto juega con las palabras
+  guardar_estado: true        # recuerda vínculo, nombre y ánimo entre arranques
+  ruta_estado: "./parker.estado.json"
+  rotacion: true              # enseña un gusto y un sueño distintos en cada charla
+  rotacion_minutos: 45        # minutos de silencio que separan una charla de la siguiente
+  charla_nueva_min: 45        # una «charla» cuenta solo si hay este hueco; no cada turno
+  nombre_usuario: ""         # vacío: no asumir nombre; se aprende si dice "me llamo X"
+  # El nombre se captura solo desde frases afirmativas "me llamo X".
+  # Si ya hay un nombre guardado y no es el correcto, bórralo de
+  # parker.estado.json o di "me llamo <nombre>".
 
 # === AUTONOMÍA ===
+
 autonomia:
   intervalo_comprobacion_seg: 300    
-  umbral_silencio_seg: 2700          
+  umbral_silencio_seg: 900           # 15 min: a partir de aquí habla solo (antes 45)          
   umbral_sedentario_seg: 3600
+  # Bandit de iniciativa (idea 14, docs/evolucion.md §6): si Parker toma la
+  # iniciativa y nadie contesta en este tiempo, ese brazo se apunta como
+  # fallo (−0,3). Si contestas en menos de 120 s, cuenta como acierto.
+  recompensa_iniciativa_seg: 1800
+
+# === BARGE-IN (interrumpir a Parker mientras habla) ===
+# Un monitor aparte abre el micro durante la respuesta y transcribe ventanas
+# cortas. Solo corta si oye «Parker, para» / «Parker, cállate» y la frase no es
+# eco de lo que Parker está diciendo. Si el micro no admite entrada y salida a
+# la vez, se desactiva solo y el turno normal sigue igual.
+barge_in:
+  activo: true
+  ventana_seg: 1.4          # audio que se transcribe en cada comprobación
+  solape_seg: 0.4           # se repite el final para no perder la palabra
+  umbral_rms: 0.004         # por debajo de esto no se gasta una transcripción
+  similitud_eco: 0.55       # parecido con la frase que suena: se ignora

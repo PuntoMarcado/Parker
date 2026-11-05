@@ -1,19 +1,21 @@
-pygame>=2.5.0
-openai-whisper
-chromadb>=0.4.0
-sentence-transformers
-groq
-ollama
-requests
-flask
-flask-socketio
+# === Núcleo de Parker (usado por el código) ===
+PySide6                 # cara/ventana Qt (faltaba: sin esto no arranca)
+openai-whisper          # backend STT de referencia
+faster-whisper          # backend STT recomendado (~4x más rápido, int8)
+chromadb>=0.4.0         # memoria vectorial
+sentence-transformers   # embeddings multilingües
+requests                # cliente HTTP de Ollama (API REST)
 pyyaml
-pyaudio
 numpy
 sounddevice
 piper-tts
 onnxruntime
-google-auth-oauthlib
-google-auth-httplib2
-google-api-python-client
-python-dateutil
+edge-tts                 # voz natural de Microsoft (voz.edge_voz); Piper queda de respaldo
+
+# === Dependencias previstas, aún sin usarse en el código ===
+# groq                        # fallback en la nube del cerebro
+# ollama                      # cliente python (hoy se usa la API REST directa)
+# flask / flask-socketio      # panel web previsto
+# pygame / pyaudio            # sustituidos por sounddevice
+# google-api-python-client, google-auth-oauthlib,
+# google-auth-httplib2, python-dateutil   # integraciones previstas

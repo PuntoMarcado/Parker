@@ -1,0 +1,26 @@
+# Entorno SEPARADO para entrenar el LoRA de personalidad.
+# No instalar esto en el venv de la Orange Pi ni en el Python 3.13 del PC:
+# Unsloth/bitsandbytes necesitan Python 3.10/3.11 y una GPU NVIDIA (CUDA).
+#
+#   python3.11 -m venv ~/env-lora
+#   source ~/env-lora/bin/activate
+#   pip install --upgrade pip
+#   pip install -r training/requirements-lora.txt
+#
+# En Colab/Kaggle: selecciona GPU T4/L4 y ejecuta las mismas líneas.
+
+torch>=2.1
+transformers>=4.45
+datasets>=2.20
+accelerate>=0.34
+peft>=0.13
+trl>=0.9
+bitsandbytes>=0.43
+sentencepiece
+protobuf
+unsloth
+
+# Para convertir a GGUF (se instala aparte en llama.cpp):
+#   git clone https://github.com/ggerganov/llama.cpp ~/llama.cpp
+#   cmake -S ~/llama.cpp -B ~/llama.cpp/build -DGGML_CUDA=OFF
+#   cmake --build ~/llama.cpp/build --config Release -j

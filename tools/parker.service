@@ -1,0 +1,26 @@
+# Unidad systemd de Parker (alternativa a cron).
+# Instalar: copiar a /etc/systemd/system/parker.service y
+#   sudo systemctl daemon-reload && sudo systemctl enable --now parker.service
+# Ver docs/inicio.md §5.
+[Unit]
+Description=Parker (voz + cara en pantalla SPI)
+Wants=network-online.target ollama.service
+After=network-online.target ollama.service
+
+[Service]
+Type=simple
+User=orangepi
+WorkingDirectory=/home/orangepi/parker
+# La cara se dibuja en la pantalla SPI: no hace falta escritorio X ni HDMI.
+Environment=QT_QPA_PLATFORM=offscreen
+Environment=ORT_LOGGING_LEVEL=3
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/orangepi/parker/tools/arrancar.sh
+Restart=always
+RestartSec=5
+# Si el proceso muere 5 veces en 60 s, deja de reintentar (evita bucles)
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

@@ -7,9 +7,28 @@ env/
 .env
 .env.*
 
+# Estado de ánimo de Parker (se regenera solo)
+parker.estado.json
+# Volumen recordado entre reinicios (lo escribe modulos/acciones.py)
+parker.volumen.json
+# Agenda local: alarmas, temporizadores y citas (modulos/agenda.py)
+parker.agenda.json
+
 # Base de datos de memoria (ChromaDB local)
 parker.db/
 *.db
+
+# Copias de seguridad locales (tools/respaldo.py)
+backups/
+
+# LoRA: datasets generados y adaptadores (la semilla y los scripts sí se suben)
+training/datos/parker_train.jsonl
+training/datos/parker_val.jsonl
+training/datos/sintetico.jsonl
+training/datos/*.log
+training/datos/_externos/
+training/salida/
+training/evaluacion.md
 
 # Archivos de caché de Python
 __pycache__/
