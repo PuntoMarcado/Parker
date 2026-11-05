@@ -20,8 +20,13 @@ tipus: annex
   <https://github.com/PuntoMarcado/Parker/archive/refs/heads/main.zip>
 - **Annex de muntatge:** [[TREC/14 Annex. Muntatge i esquemes electrònics]]
 
-La branca publicada és **`main`**. Els enllaços d'aquest annex hi apunten
+La branca remota és **`main`**. Els enllaços d'aquest annex hi apunten
 directament; si el repositori canvia de nom o de branca, cal actualitzar-los.
+
+> **Accés des del mòbil.** El repositori és **privat**. Per obrir-lo cal iniciar
+> sessió a GitHub amb un compte que hi tingui accés. Si s'ha de consultar des
+> d'un dispositiu sense compte, cal fer el repositori públic o exportar els
+> annexos; els enllaços no fan pública la documentació per si sols.
 
 ## 2. Per què el codi va a part
 
